@@ -24,7 +24,7 @@ function App() {
       setLoading(true);
 
       const res = await axios.post(
-        "https://study-sprintai-1.onrender.com",
+        "https://study-sprintai-1.onrender.com/upload",
         formData
       );
 
