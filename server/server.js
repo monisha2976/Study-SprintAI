@@ -27,9 +27,34 @@ app.get("/", (req, res) => {
 
 app.post("/upload", upload.single("pdf"), async (req, res) => {
   try {
-    const dataBuffer = fs.readFileSync(req.file.path);
-    const pdfData = await pdf(dataBuffer);
+    // -------------------------------
+    // ✅ SAFE PDF PARSING (FIXED)
+    // -------------------------------
+    if (!req.file) {
+      return res.status(400).json({
+        message: "No file uploaded"
+      });
+    }
 
+    const dataBuffer = fs.readFileSync(req.file.path);
+
+    let pdfData;
+
+    try {
+      pdfData = await pdf(dataBuffer);
+    } catch (err) {
+      console.log("PDF PARSE FAILED:", err);
+
+      fs.unlinkSync(req.file.path);
+
+      return res.status(400).json({
+        message: "Invalid or unsupported PDF file"
+      });
+    }
+
+    // -------------------------------
+    // GEMINI MODEL
+    // -------------------------------
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
     });
@@ -78,13 +103,15 @@ ${pdfData.text}
 `;
 
     const result = await model.generateContent(prompt);
-
     const text = result.response.text();
 
     console.log("========== GEMINI RESPONSE ==========");
     console.log(text);
     console.log("=====================================");
 
+    // -------------------------------
+    // CLEAN RESPONSE
+    // -------------------------------
     let cleaned = text
       .replace(/```json/g, "")
       .replace(/```/g, "")
@@ -95,21 +122,36 @@ ${pdfData.text}
 
     cleaned = cleaned.substring(start, end + 1);
 
-    const aiResponse = JSON.parse(cleaned);
+    // -------------------------------
+    // SAFE JSON PARSE (FIXED)
+    // -------------------------------
+    let aiResponse;
 
+    try {
+      aiResponse = JSON.parse(cleaned);
+    } catch (err) {
+      console.log("JSON PARSE FAILED:");
+      console.log(cleaned);
+
+      return res.status(500).json({
+        message: "AI returned invalid JSON format"
+      });
+    }
+
+    // -------------------------------
+    // CLEANUP FILE
+    // -------------------------------
     fs.unlinkSync(req.file.path);
 
     res.json(aiResponse);
 
   } catch (err) {
-
     console.error(err);
 
     res.status(500).json({
       message: "AI generation failed",
       error: err.message,
     });
-
   }
 });
 
