@@ -24,7 +24,7 @@ function App() {
       setLoading(true);
 
       const res = await axios.post(
-        "http://localhost:5000/upload",
+        "https://study-sprintai-1.onrender.com",
         formData
       );
 
