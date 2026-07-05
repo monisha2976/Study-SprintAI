@@ -36,9 +36,9 @@ function App() {
       setScore(0);
 
     } catch (err) {
-      console.error(err);
-      alert("Error generating AI response");
-    }
+  console.log("FULL ERROR:", err.response?.data || err.message);
+  alert(err.response?.data?.message || err.message);
+}
 
     setLoading(false);
   };
